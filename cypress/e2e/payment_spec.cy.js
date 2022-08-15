@@ -4,8 +4,8 @@
  * Created On: 15 August 2022
  */
 describe("payment", () => {
-  // Test Case: User should be able to make payment.
-  it("passes", () => {
+  // Test Case 1: User should be able to make payment.
+  it("Verify user should be able to make payment.", () => {
     // Visit our site running on local.
     cy.visit("http://localhost:3000/");
 
@@ -70,5 +70,52 @@ describe("payment", () => {
 
     // Assertion 11: Transaction detail should contain the note.
     cy.get("[data-test=transaction-description]").contains(note).should("be.visible");
+  });
+
+  // Test Case 2: Account balance gets deducted correctly upon successful payment.
+  it("Verify once payment is made, the account balance gets deducted.", () => {
+    // Visit our site running on local.
+    cy.visit("http://localhost:3000/");
+
+    // Login to user test account.
+    cy.get("#username").type("johndoe");
+    cy.get("#password").type("s3cret");
+    cy.get("button")
+      .contains(/sign in/i)
+      .click();
+
+    // Assertion 1: upon successful login, the url should have notifications.
+    cy.get("[data-test=sidenav-user-balance]").should("exist");
+
+    // Extract the existing account balance.
+    let ogBalance;
+    cy.get("[data-test=sidenav-user-balance]").then(($balance) => {
+      ogBalance = parseFloat($balance.text().replace(/\$|,/g, ""));
+    });
+
+    // Click on New button.
+    cy.get("[data-test=nav-top-new-transaction]").click();
+
+    // Search for payee i.e. Devon Becker.
+    cy.get("#user-list-search-input").type("devon becker");
+    cy.contains("Devon Becker").click();
+
+    // Add $ amount.
+    let amt = "10";
+    cy.get("#amount").type(amt);
+
+    // Add a transaction note.
+    let timestamp = new Date().toUTCString();
+    let note = `e2e test make payment of ${amt} by janev ${timestamp}`;
+    cy.get("#transaction-create-description-input").type(note);
+
+    // Execute payment.
+    cy.get("[data-test=transaction-create-submit-payment]").should("be.enabled").click();
+
+    // Assertion 2: Original balance should be deducted by the amount being paid.
+    cy.get("[data-test=sidenav-user-balance]").then(($balance) => {
+      const newBalance = parseFloat($balance.text().replace(/\$|,/g, ""));
+      expect(ogBalance - newBalance).to.equal(parseFloat(amt));
+    });
   });
 });
